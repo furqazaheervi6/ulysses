@@ -19,12 +19,6 @@ typedef struct fc_command {
     float thrust_bottom;
 } fc_command_t;
 
-/**
- * @brief Flight controller instance holding its configuration and controller memory
- *
- * Owned by the caller. Must be initialized with flight_controller_init() before use and must not
- * be shared between tasks without external synchronization.
- */
 typedef struct flight_controller {
     fc_config_t config;       ///< Copy of the configuration given to flight_controller_init()
     float torque_integral[3]; ///< Torque controller integrator state
@@ -44,14 +38,19 @@ typedef struct flight_controller {
 void flight_controller_init(flight_controller_t *fc, const fc_config_t *config);
 
 /**
- * @brief Runs one controller update
+ * @brief Replaces the controller gains
+ *
+ * Copies the gains into the controller. Integrator and previous-error state are kept, so the
+ * output does not jump when gains change.
  *
  * @param fc Non-NULL controller initialized with flight_controller_init()
- * @param state Non-NULL current state estimate
- * @param ref Non-NULL reference to track
- * @param[out] cmd_out Non-NULL command output
- * @param dt_s Time since the previous step in seconds
+ * @param torque Non-NULL torque controller gains to copy
+ * @param gimbal Non-NULL gimbal controller gains to copy
  */
+void flight_controller_set_gains(flight_controller_t *fc,
+                                 const fc_torque_controller_config_t *torque,
+                                 const fc_gimbal_controller_config_t *gimbal);
+
 void flight_controller_step(flight_controller_t *fc, const eskf_nominal_state_t *state,
                             const fc_ref_t *ref, fc_command_t *cmd_out, float dt_s);
 
