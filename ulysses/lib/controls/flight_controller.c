@@ -13,6 +13,18 @@ void flight_controller_init(flight_controller_t *fc, const fc_config_t *config)
     fc->config = *config;
 }
 
+void flight_controller_set_gains(flight_controller_t *fc,
+                                 const fc_torque_controller_config_t *torque,
+                                 const fc_gimbal_controller_config_t *gimbal)
+{
+    ULYSSES_ASSERT(fc != NULL, "Flight controller must be non NULL");
+    ULYSSES_ASSERT(torque != NULL, "Torque gains must be non NULL");
+    ULYSSES_ASSERT(gimbal != NULL, "Gimbal gains must be non NULL");
+
+    fc->config.torque_gains = *torque;
+    fc->config.gimbal_gains = *gimbal;
+}
+
 void flight_controller_step(flight_controller_t *fc, const eskf_nominal_state_t *state,
                             const fc_ref_t *ref, fc_command_t *cmd_out, float dt_s)
 {
