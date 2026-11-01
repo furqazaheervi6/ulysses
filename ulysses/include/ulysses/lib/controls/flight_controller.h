@@ -25,14 +25,14 @@ typedef struct fc_command {
 #define FC_FAULT_BAD_DT (1u << 0)      ///< step() was given a non-positive or NaN dt_s
 #define FC_FAULT_MISSED_TICK (1u << 1) ///< step() was given a dt_s above FC_DT_MAX_US
 
-/// Longest dt_s step() accepts as normal. Placeholder until the control loop rate is decided.
+/// Longest dt_s step() accepts as normal (3 s).
 #ifndef FC_DT_MAX_US
-#define FC_DT_MAX_US (20000u)
+#define FC_DT_MAX_US (3000000u)
 #endif
 #define FC_DT_MAX_S ((float)FC_DT_MAX_US * 1e-6f)
 
 _Static_assert(FC_DT_MAX_US > 0u, "FC_DT_MAX_US must be positive");
-_Static_assert(FC_DT_MAX_US <= 1000000u, "FC_DT_MAX_US above 1 s is not a control loop period");
+_Static_assert(FC_DT_MAX_US <= 10000000u, "FC_DT_MAX_US above 10 s is not a sane dt limit");
 
 /** @brief Torque and gimbal gains, updated together */
 typedef struct fc_gains {
