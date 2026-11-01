@@ -6,6 +6,7 @@
 #include <float.h>
 #include <math.h>
 
+/// Hamilton quaternion, scalar-first (w, v), mapping body to world. See flight_controller.h.
 typedef union quaternion {
     float q[4];
 

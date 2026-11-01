@@ -8,8 +8,39 @@
 
 #include "ulysses/lib/math/quaternion.h"
 
+/**
+ * @file
+ * Frames and sign conventions used by the flight controller
+ *
+ * Source: the UBC Rocket docs (controls: Quaternions, Architecture overview, ESKF design
+ * overview). Only what those pages state is written as fact here. Whatever they leave open is
+ * listed at the end and must not be assumed.
+ *
+ * Quaternions are Hamilton, scalar-first (w, v). The orientation q maps body coordinates to world
+ * coordinates. A rotation applied in the world frame left-multiplies (q' = dq * q), and a rotation
+ * applied in the body frame right-multiplies (q' = q * dq). Normalize the quaternion after every
+ * nominal state update.
+ *
+ * Attitude error: q_err = q_des * conj(q_meas). By the rule above, this is a rotation in the world
+ * frame. The torque command is tau_cmd = tau_gyro + phi, where phi is the rotation-vector form of
+ * q_err and tau_gyro = (MMOI * omega) x omega.
+ *
+ * Gimbal angles, for the desired thrust direction t_des: theta_x = -atan(t_des.y / t_des.z) and
+ * theta_y = asin(t_des.x).
+ *
+ * Not defined by the docs, so not assumed here:
+ *  - the world frame axes (NED, ENU, ...) and the direction of gravity;
+ *  - the body frame axes and handedness, and which axis is the thrust axis;
+ *  - the frame of omega, the sensor readings and t_des;
+ *  - units;
+ *  - which way a positive theta_x or theta_y tilts the thrust;
+ *  - where tau_gyro, phi and tau_cmd are rotated into a common frame. q_err is a world-frame
+ *    rotation, while the docs do not say which frame omega and MMOI are in.
+ * Settle these with the controls team before writing the control law.
+ */
+
 typedef struct fc_ref {
-    quaternion_t attitude_ref;
+    quaternion_t attitude_ref; ///< Desired orientation, same convention as q_meas
     float pos_ref[3];
     float vel_ref[3];
 } fc_ref_t;

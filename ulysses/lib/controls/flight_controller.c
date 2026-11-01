@@ -80,7 +80,9 @@ void flight_controller_step(flight_controller_t *fc, const eskf_nominal_state_t 
         fc->config.gimbal_gains = gains->gimbal;
     }
 
-    // TODO: implement the control law using dt
+    // TODO: implement the control law using dt. q_err is a world-frame rotation, and the docs do
+    // not say which frame omega and the inertia are in; settle this before writing the law (see
+    // "Frames and sign conventions" in flight_controller.h).
     (void)dt;
     memset(cmd_out, 0, sizeof(*cmd_out));
 }
