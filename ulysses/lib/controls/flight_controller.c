@@ -19,8 +19,8 @@ void flight_controller_init(flight_controller_t *fc, const fc_config_t *config)
     // The slot index and the dirty flag share one word; check they cannot collide.
     // Flag first: the assert handler does not return.
     size_t slot_count = sizeof(fc->gains_slots) / sizeof(fc->gains_slots[0]);
-    bool layout_ok = (slot_count <= FC_GAINS_INDEX_MASK + 1u) &&
-                     ((FC_GAINS_DIRTY & FC_GAINS_INDEX_MASK) == 0u);
+    bool layout_ok =
+        (slot_count <= FC_GAINS_INDEX_MASK + 1u) && ((FC_GAINS_DIRTY & FC_GAINS_INDEX_MASK) == 0u);
     if (!layout_ok) {
         fc->faults |= FC_FAULT_BAD_GAINS_LAYOUT;
     }
