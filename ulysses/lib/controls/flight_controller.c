@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -7,12 +8,6 @@
 #define FC_GAINS_DIRTY (0x4u)
 #define FC_GAINS_INDEX_MASK (0x3u)
 
-_Static_assert(sizeof(((flight_controller_t *)0)->gains_slots) /
-                       sizeof(((flight_controller_t *)0)->gains_slots[0]) <=
-                   FC_GAINS_INDEX_MASK + 1u,
-               "Gains slot index does not fit in FC_GAINS_INDEX_MASK");
-_Static_assert((FC_GAINS_DIRTY & FC_GAINS_INDEX_MASK) == 0u, "Dirty bit overlaps slot index");
-
 void flight_controller_init(flight_controller_t *fc, const fc_config_t *config)
 {
     ULYSSES_ASSERT(fc != NULL, "Flight controller must be non NULL");
@@ -20,6 +15,16 @@ void flight_controller_init(flight_controller_t *fc, const fc_config_t *config)
 
     memset(fc, 0, sizeof(*fc));
     fc->config = *config;
+
+    // The slot index and the dirty flag share one word; check they cannot collide.
+    // Flag first: the assert handler does not return.
+    size_t slot_count = sizeof(fc->gains_slots) / sizeof(fc->gains_slots[0]);
+    bool layout_ok = (slot_count <= FC_GAINS_INDEX_MASK + 1u) &&
+                     ((FC_GAINS_DIRTY & FC_GAINS_INDEX_MASK) == 0u);
+    if (!layout_ok) {
+        fc->faults |= FC_FAULT_BAD_GAINS_LAYOUT;
+    }
+    ULYSSES_ASSERT(layout_ok, "Gains buffer slot index and dirty bit layout is invalid");
 
     fc->gains_write_idx = 0;
     fc->gains_read_idx = 1;

@@ -24,6 +24,7 @@ typedef struct fc_command {
 
 #define FC_FAULT_BAD_DT (1u << 0)      ///< step() was given a non-positive or NaN dt_s
 #define FC_FAULT_MISSED_TICK (1u << 1) ///< step() was given a dt_s above FC_DT_MAX_US
+#define FC_FAULT_BAD_GAINS_LAYOUT (1u << 2) ///< init() found the gains buffer constants invalid
 
 /// Longest dt_s step() accepts as normal (3 s).
 #ifndef FC_DT_MAX_US
