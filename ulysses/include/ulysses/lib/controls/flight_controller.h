@@ -2,6 +2,7 @@
 #define ULYSSES_LIB_CONTROLS_FLIGHT_CONTROLLER
 
 #include <stdatomic.h>
+#include <stdint.h>
 
 #include "ulysses/lib/controls/flight_config.h"
 #include "ulysses/lib/eskf/eskf.h"
@@ -21,6 +22,18 @@ typedef struct fc_command {
     float thrust_bottom;
 } fc_command_t;
 
+#define FC_FAULT_BAD_DT (1u << 0)      ///< step() was given a non-positive or NaN dt_s
+#define FC_FAULT_MISSED_TICK (1u << 1) ///< step() was given a dt_s above FC_DT_MAX_US
+
+/// Longest dt_s step() accepts as normal. Placeholder until the control loop rate is decided.
+#ifndef FC_DT_MAX_US
+#define FC_DT_MAX_US (20000u)
+#endif
+#define FC_DT_MAX_S ((float)FC_DT_MAX_US * 1e-6f)
+
+_Static_assert(FC_DT_MAX_US > 0u, "FC_DT_MAX_US must be positive");
+_Static_assert(FC_DT_MAX_US <= 1000000u, "FC_DT_MAX_US above 1 s is not a control loop period");
+
 /** @brief Torque and gimbal gains, updated together */
 typedef struct fc_gains {
     fc_torque_controller_config_t torque;
@@ -33,6 +46,8 @@ typedef struct flight_controller {
     float torque_prev_err[3]; ///< Previous torque controller error, for the derivative term
     float gimbal_integral[2]; ///< Gimbal controller integrator state (x, y)
     float gimbal_prev_err[2]; ///< Previous gimbal controller error (x, y)
+
+    uint32_t faults; ///< Sticky FC_FAULT_* bits, set before the assert fires; cleared by init
 
     // Triple buffer handing gains from the writer (set_gains) to the reader (step) without locks
     fc_gains_t gains_slots[3];
@@ -69,6 +84,14 @@ void flight_controller_set_gains(flight_controller_t *fc,
                                  const fc_torque_controller_config_t *torque,
                                  const fc_gimbal_controller_config_t *gimbal);
 
+/**
+ * @brief Runs one controller update
+ *
+ * @param dt_s Time since the previous step in seconds; must be positive. Otherwise FC_FAULT_BAD_DT
+ *             is set in fc->faults and the assert handler is called. If dt_s exceeds FC_DT_MAX_S
+ *             (a missed tick), FC_FAULT_MISSED_TICK is set and dt_s is clamped to FC_DT_MAX_S for
+ *             this step.
+ */
 void flight_controller_step(flight_controller_t *fc, const eskf_nominal_state_t *state,
                             const fc_ref_t *ref, fc_command_t *cmd_out, float dt_s);
 
