@@ -2,7 +2,6 @@
 #define ULYSSES_LIB_CONTROLS_FLIGHT_CONTROLLER
 
 #include <stdatomic.h>
-#include <stdint.h>
 
 #include "ulysses/lib/controls/flight_config.h"
 #include "ulysses/lib/eskf/eskf.h"
@@ -41,6 +40,12 @@ typedef struct fc_gains {
     fc_gimbal_controller_config_t gimbal;
 } fc_gains_t;
 
+/**
+ * @brief Flight controller instance
+ *
+ * flight_controller_init() and flight_controller_step() must never run concurrently with each other
+ * or with themselves, so call both from a single control task.
+ */
 typedef struct flight_controller {
     fc_config_t config;       ///< Copy of the configuration given to flight_controller_init()
     float torque_integral[3]; ///< Torque controller integrator state
@@ -48,7 +53,9 @@ typedef struct flight_controller {
     float gimbal_integral[2]; ///< Gimbal controller integrator state (x, y)
     float gimbal_prev_err[2]; ///< Previous gimbal controller error (x, y)
 
-    uint32_t faults; ///< Sticky FC_FAULT_* bits, set before the assert fires; cleared by init
+    ///< Sticky FC_FAULT_* bits, set before the assert fires; cleared by init. Atomic, so other
+    ///< tasks (e.g. telemetry) may read it while the control task runs.
+    atomic_uint faults;
 
     // Triple buffer handing gains from the writer (set_gains) to the reader (step) without locks
     fc_gains_t gains_slots[3];
@@ -61,6 +68,7 @@ typedef struct flight_controller {
  * @brief Initializes a flight controller
  *
  * Copies config, so config does not need to outlive this call, and clears all controller state.
+ * Must not run concurrently with flight_controller_step().
  *
  * @param[out] fc Non-NULL controller to initialize
  * @param config Non-NULL configuration to copy
@@ -87,6 +95,8 @@ void flight_controller_set_gains(flight_controller_t *fc,
 
 /**
  * @brief Runs one controller update
+ *
+ * Must not run concurrently with itself or with flight_controller_init().
  *
  * @param dt_s Time since the previous step in seconds; must be positive. Otherwise FC_FAULT_BAD_DT
  *             is set in fc->faults and the assert handler is called. If dt_s exceeds FC_DT_MAX_S

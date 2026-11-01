@@ -15,6 +15,7 @@ void flight_controller_init(flight_controller_t *fc, const fc_config_t *config)
 
     memset(fc, 0, sizeof(*fc));
     fc->config = *config;
+    atomic_init(&fc->faults, 0);
 
     // The slot index and the dirty flag share one word; check they cannot collide.
     // Flag first: the assert handler does not return.
@@ -22,7 +23,7 @@ void flight_controller_init(flight_controller_t *fc, const fc_config_t *config)
     bool layout_ok =
         (slot_count <= FC_GAINS_INDEX_MASK + 1u) && ((FC_GAINS_DIRTY & FC_GAINS_INDEX_MASK) == 0u);
     if (!layout_ok) {
-        fc->faults |= FC_FAULT_BAD_GAINS_LAYOUT;
+        atomic_fetch_or(&fc->faults, FC_FAULT_BAD_GAINS_LAYOUT);
     }
     ULYSSES_ASSERT(layout_ok, "Gains buffer slot index and dirty bit layout is invalid");
 
@@ -58,7 +59,7 @@ void flight_controller_step(flight_controller_t *fc, const eskf_nominal_state_t 
 
     // Written so NaN also fails. Flag first: the assert handler does not return.
     if (!(dt_s > 0.0f)) {
-        fc->faults |= FC_FAULT_BAD_DT;
+        atomic_fetch_or(&fc->faults, FC_FAULT_BAD_DT);
     }
     ULYSSES_ASSERT(dt_s > 0.0f, "Time step must be positive");
 
@@ -66,7 +67,7 @@ void flight_controller_step(flight_controller_t *fc, const eskf_nominal_state_t 
     // or spike the derivative.
     float dt = dt_s;
     if (dt > FC_DT_MAX_S) {
-        fc->faults |= FC_FAULT_MISSED_TICK;
+        atomic_fetch_or(&fc->faults, FC_FAULT_MISSED_TICK);
         dt = FC_DT_MAX_S;
     }
 
