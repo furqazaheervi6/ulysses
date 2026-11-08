@@ -5,6 +5,7 @@
 
 #include <float.h>
 #include <math.h>
+#include <stddef.h>
 
 /// Hamilton quaternion, scalar-first (w, v), mapping body to world. See flight_controller.h.
 typedef union quaternion {
@@ -73,6 +74,46 @@ static inline quaternion_t quaternion_shortest_path(quaternion_t q)
     }
 
     return q;
+}
+
+/**
+ * @brief Converts a quaternion to the rotation vector of the shortest rotation it represents
+ *
+ * A rotation by angle theta about the unit axis n has the rotation vector theta * n. This is the
+ * phi of the control architecture docs, phi = 2 * atan(|v| / w) * v / |v|, applied to q_err. It is
+ * computed with atan2 so that w = 0 (a half turn) is defined, and q is first flipped to w >= 0
+ * with quaternion_shortest_path(), so the angle is at most pi and the controller never turns the
+ * long way. The result is in the frame q is expressed in and in radians.
+ *
+ * q does not need to be unit length, since only its direction matters. A quaternion with no
+ * rotation (v = 0, w > 0) gives the zero vector.
+ *
+ * @param q Quaternion with a finite, non-zero norm
+ * @param[out] out Non-NULL rotation vector
+ */
+static inline void quaternion_to_rotation_vector(quaternion_t q, float out[3])
+{
+    ULYSSES_ASSERT(out != NULL, "Rotation vector output must be non NULL");
+
+    q = quaternion_shortest_path(q);
+
+    float v_norm = sqrtf(q.v[0] * q.v[0] + q.v[1] * q.v[1] + q.v[2] * q.v[2]);
+
+    // Written so NaN also fails
+    ULYSSES_ASSERT(isfinite(q.w) && isfinite(v_norm) && (q.w > 0.0f || v_norm > 0.0f),
+                   "Cannot convert a zero, infinite or NaN quaternion");
+
+    if (v_norm <= FLT_MIN) {
+        for (int i = 0; i < 3; i++) {
+            out[i] = 0.0f;
+        }
+        return;
+    }
+
+    float scale = 2.0f * atan2f(v_norm, q.w) / v_norm;
+    for (int i = 0; i < 3; i++) {
+        out[i] = scale * q.v[i];
+    }
 }
 
 #endif /* ULYSSES_LIB_MATH_QUATERNION */
