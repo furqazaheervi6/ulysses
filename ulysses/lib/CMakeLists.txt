@@ -10,7 +10,5 @@ target_link_libraries(ulysses_lib
 target_sources(ulysses_lib
     PRIVATE
         assert/default_handler.c
-        controls/motor_map.c
         controls/pid.c
-        dshot/dshot.c
 )
