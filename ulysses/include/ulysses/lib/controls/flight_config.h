@@ -21,6 +21,9 @@ typedef struct fc_torque_controller_config {
     float Kp[3][3];
     float Ki[3][3];
     float Kd[3][3];
+
+    ///< Largest magnitude of each torque integrator (error * seconds), see pid.h
+    float integral_max;
 } fc_torque_controller_config_t;
 
 typedef struct fc_gimbal_controller_config {
@@ -31,6 +34,10 @@ typedef struct fc_gimbal_controller_config {
     float kp_y;
     float ki_y;
     float kd_y;
+
+    ///< Largest magnitude of the gimbal integrators (error * seconds), see pid.h
+    float integral_max_x;
+    float integral_max_y;
 } fc_gimbal_controller_config_t;
 
 typedef struct fc_config {

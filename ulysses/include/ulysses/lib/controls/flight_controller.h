@@ -4,6 +4,7 @@
 #include <stdatomic.h>
 
 #include "ulysses/lib/controls/flight_config.h"
+#include "ulysses/lib/controls/pid.h"
 #include "ulysses/lib/eskf/eskf.h"
 
 #include "ulysses/lib/math/quaternion.h"
@@ -78,11 +79,9 @@ typedef struct fc_gains {
  * or with themselves, so call both from a single control task.
  */
 typedef struct flight_controller {
-    fc_config_t config;       ///< Copy of the configuration given to flight_controller_init()
-    float torque_integral[3]; ///< Torque controller integrator state
-    float torque_prev_err[3]; ///< Previous torque controller error, for the derivative term
-    float gimbal_integral[2]; ///< Gimbal controller integrator state (x, y)
-    float gimbal_prev_err[2]; ///< Previous gimbal controller error (x, y)
+    fc_config_t config;        ///< Copy of the configuration given to flight_controller_init()
+    pid3_state_t torque_pid;   ///< Torque controller integrators
+    pid_state_t gimbal_pid[2]; ///< Gimbal controller integrators (x, y)
 
     ///< Sticky FC_FAULT_* bits, set before the assert fires; cleared by init. Atomic, so other
     ///< tasks (e.g. telemetry) may read it while the control task runs.
@@ -110,8 +109,8 @@ void flight_controller_init(flight_controller_t *fc, const fc_config_t *config);
  * @brief Queues new controller gains
  *
  * Copies the gains into a pending buffer. flight_controller_step() applies them at the start of its
- * next call, so this never blocks the control loop. Integrator and previous-error state are kept,
- * so the output does not jump when gains change.
+ * next call, so this never blocks the control loop. The integrators are kept, so the output does
+ * not jump when gains change.
  *
  * May be called from a different task than flight_controller_step(), but only one task may call
  * this function. If called again before the next step, the later gains replace the earlier ones.
