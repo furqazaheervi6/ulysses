@@ -18,6 +18,53 @@ typedef union quaternion {
 } quaternion_t;
 
 /**
+ * @brief Returns the conjugate of a quaternion
+ *
+ * For a unit quaternion the conjugate is the inverse, the rotation that undoes q. For any other
+ * quaternion the inverse is the conjugate divided by |q|^2.
+ *
+ * @param q Quaternion to conjugate
+ *
+ * @return (w, -v)
+ */
+static inline quaternion_t quaternion_conjugate(quaternion_t q)
+{
+    for (int i = 0; i < 3; i++) {
+        q.v[i] = -q.v[i];
+    }
+
+    return q;
+}
+
+/**
+ * @brief Returns the Hamilton product a * b
+ *
+ * With unit quaternions, a * b is the rotation b followed by the rotation a, both about the same
+ * fixed axes. In the orientation convention of flight_controller.h this means a rotation dq in the
+ * world frame is dq * q and a rotation in the body frame is q * dq. The product is not
+ * commutative.
+ *
+ * The product of two unit quaternions is only unit length up to rounding, so normalize it
+ * regularly if it is chained, see quaternion_normalize().
+ *
+ * @param a Left factor
+ * @param b Right factor
+ *
+ * @return (a.w * b.w - a.v . b.v, a.w * b.v + b.w * a.v + a.v x b.v)
+ */
+static inline quaternion_t quaternion_multiply(quaternion_t a, quaternion_t b)
+{
+    quaternion_t r;
+
+    r.w = a.w * b.w - (a.v[0] * b.v[0] + a.v[1] * b.v[1] + a.v[2] * b.v[2]);
+    r.v[0] = a.w * b.v[0] + b.w * a.v[0] + (a.v[1] * b.v[2] - a.v[2] * b.v[1]);
+    r.v[1] = a.w * b.v[1] + b.w * a.v[1] + (a.v[2] * b.v[0] - a.v[0] * b.v[2]);
+    r.v[2] = a.w * b.v[2] + b.w * a.v[2] + (a.v[0] * b.v[1] - a.v[1] * b.v[0]);
+
+    return r;
+}
+
+/**
  * @brief Returns the Euclidean norm of a quaternion
  *
  * @param q Quaternion to measure
