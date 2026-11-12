@@ -25,8 +25,10 @@ sim STM32H743ZI run --elf build/Debug/controls_sim.elf --ascii --timeout 2 \
 ```
 
 CI runs this in the `Simulate controls (Simantic)` job of `.github/workflows/ulysses-firmware.yaml`.
-It needs a repository secret named `TEST3`, an `smtc_` API key created under Account, API
-Settings on simantic.com. Without the secret, the job skips itself.
+It needs two repository secrets: `TEST3`, an `smtc_` API key created under Account, API Settings on
+simantic.com, and `SIMANTIC_EMAIL`, the email of that Simantic account. The job signs in with
+`sim auth`, since `sim run` does not read the token from the environment. Without both secrets, the
+job skips itself.
 
 ## Adding tests
 

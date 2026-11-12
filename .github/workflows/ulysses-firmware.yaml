@@ -59,15 +59,17 @@ jobs:
     env:
       # Not available to pull requests from forks, in which case the job skips itself
       SIMANTIC_TOKEN: ${{ secrets.TEST3 }}
+      # The account email `sim auth` pairs with the token
+      SIMANTIC_EMAIL: ${{ secrets.SIMANTIC_EMAIL }}
     steps:
-      - name: Check for Simantic token
+      - name: Check for Simantic credentials
         id: token
         working-directory: .
         run: |
-          if [ -n "$SIMANTIC_TOKEN" ]; then
+          if [ -n "$SIMANTIC_TOKEN" ] && [ -n "$SIMANTIC_EMAIL" ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::SIMANTIC_TOKEN is not set, skipping the simulation"
+            echo "::notice::The Simantic token or email secret is not set, skipping the simulation"
             echo "available=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Checkout firmware
@@ -100,6 +102,10 @@ jobs:
         run: |
           curl -fsSL https://simantic.com/install | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Sign in to Simantic
+        if: steps.token.outputs.available == 'true'
+        # sim run reads the credentials that sim auth saves, not SIMANTIC_TOKEN
+        run: printf '%s\n%s\n' "$SIMANTIC_EMAIL" "$SIMANTIC_TOKEN" | sim auth
       - name: Run controls tests in the simulator
         if: steps.token.outputs.available == 'true'
         # The STM32H745 that Ulysses flies on is not modeled by Simantic, so the image runs on the
