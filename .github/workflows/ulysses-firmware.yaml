@@ -58,7 +58,7 @@ jobs:
         working-directory: ulysses/sim
     env:
       # Not available to pull requests from forks, in which case the job skips itself
-      SIMANTIC_TOKEN: ${{ secrets.SIMANTIC_TOKEN }}
+      SIMANTIC_TOKEN: ${{ secrets.TEST3 }}
     steps:
       - name: Check for Simantic token
         id: token
