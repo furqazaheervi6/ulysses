@@ -77,7 +77,13 @@ jobs:
         if: steps.token.outputs.available == 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build libpython3.12
+          sudo apt-get install -y cmake ninja-build
+      - name: Install Python
+        if: steps.token.outputs.available == 'true'
+        # The simulator loads a Python 3.12 or newer shared library at start-up
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
       - name: Install ARM GCC
         if: steps.token.outputs.available == 'true'
         uses: carlosperate/arm-none-eabi-gcc-action@0edbb000a5a98e2292b051b463bff6f512547118 # v1.14.0
