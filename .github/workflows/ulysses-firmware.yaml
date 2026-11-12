@@ -50,3 +50,67 @@ jobs:
           BUILD_RESULT: ${{ needs.build.result }}
         run: |
           test "$BUILD_RESULT" = "success"
+  simulate:
+    name: Simulate controls (Simantic)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ulysses/sim
+    env:
+      # Not available to pull requests from forks, in which case the job skips itself
+      SIMANTIC_TOKEN: ${{ secrets.TEST3 }}
+      # The account email `sim auth` pairs with the token
+      SIMANTIC_EMAIL: ${{ secrets.SIMANTIC_EMAIL }}
+    steps:
+      - name: Check for Simantic credentials
+        id: token
+        working-directory: .
+        run: |
+          if [ -n "$SIMANTIC_TOKEN" ] && [ -n "$SIMANTIC_EMAIL" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::The Simantic token or email secret is not set, skipping the simulation"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Checkout firmware
+        if: steps.token.outputs.available == 'true'
+        uses: actions/checkout@v7.0.1
+      - name: Install build dependencies
+        if: steps.token.outputs.available == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+      - name: Install Python
+        if: steps.token.outputs.available == 'true'
+        # The simulator loads a Python 3.12 or newer shared library at start-up
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install ARM GCC
+        if: steps.token.outputs.available == 'true'
+        uses: carlosperate/arm-none-eabi-gcc-action@0edbb000a5a98e2292b051b463bff6f512547118 # v1.14.0
+        with:
+          release: "15.3.Rel1"
+      - name: Build simulation image
+        if: steps.token.outputs.available == 'true'
+        run: |
+          cmake --preset Debug
+          cmake --build --preset Debug
+      - name: Install Simantic CLI
+        if: steps.token.outputs.available == 'true'
+        working-directory: .
+        run: |
+          curl -fsSL https://simantic.com/install | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Sign in to Simantic
+        if: steps.token.outputs.available == 'true'
+        # sim run reads the credentials that sim auth saves, not SIMANTIC_TOKEN
+        run: printf '%s\n%s\n' "$SIMANTIC_EMAIL" "$SIMANTIC_TOKEN" | sim auth
+      - name: Run controls tests in the simulator
+        if: steps.token.outputs.available == 'true'
+        # The STM32H745 that Ulysses flies on is not modeled by Simantic, so the image runs on the
+        # STM32H743, which has the same Cortex-M7 core. The UART console is the test contract.
+        run: |
+          sim STM32H743ZI run --elf build/Debug/controls_sim.elf --ascii --timeout 2 \
+            --on-fault fail \
+            --expect "ULYSSES-SIM: ALL PASS" --expect-absent "FAIL"
