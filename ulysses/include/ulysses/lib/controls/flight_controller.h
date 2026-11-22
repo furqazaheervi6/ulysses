@@ -5,7 +5,6 @@
 
 #include "ulysses/lib/controls/flight_config.h"
 #include "ulysses/lib/controls/pid.h"
-#include "ulysses/lib/eskf/eskf.h"
 
 #include "ulysses/lib/math/quaternion.h"
 
@@ -40,10 +39,28 @@
  * Settle these with the controls team before writing the control law.
  */
 
+/**
+ * @brief State estimate the controller reads on every step
+ *
+ * The state estimator is a black box to the controller: the caller converts whatever the estimator
+ * outputs into this struct, so the controller does not depend on the estimator's own types. Every
+ * field is the measured value, as opposed to fc_ref_t, which holds the desired values.
+ *
+ * The units are SI. The frames are not defined yet, see "Not defined by the docs" above, so each
+ * field is in whichever frame the caller and the control law agree on.
+ */
+typedef struct fc_state {
+    quaternion_t orientation; ///< Measured orientation q_meas, same convention as attitude_ref
+    float omega[3];           ///< Angular velocity in radians per second
+    float position[3];        ///< Position in metres
+    float velocity[3];        ///< Velocity in metres per second
+} fc_state_t;
+
+/// Desired values. Hard-coded for the hop test (straight up), to be set from the console later.
 typedef struct fc_ref {
     quaternion_t attitude_ref; ///< Desired orientation, same convention as q_meas
-    float pos_ref[3];
-    float vel_ref[3];
+    float pos_ref[3];          ///< Desired position in metres
+    float vel_ref[3];          ///< Desired velocity in metres per second
 } fc_ref_t;
 
 typedef struct fc_command {
@@ -128,12 +145,15 @@ void flight_controller_set_gains(flight_controller_t *fc,
  *
  * Must not run concurrently with itself or with flight_controller_init().
  *
+ * @param state Non-NULL measured state, from the state estimator
+ * @param ref Non-NULL desired values
+ * @param[out] cmd_out Non-NULL command
  * @param dt_s Time since the previous step in seconds; must be positive. Otherwise FC_FAULT_BAD_DT
  *             is set in fc->faults and the assert handler is called. If dt_s exceeds FC_DT_MAX_S
  *             (a missed tick), FC_FAULT_MISSED_TICK is set and dt_s is clamped to FC_DT_MAX_S for
  *             this step.
  */
-void flight_controller_step(flight_controller_t *fc, const eskf_nominal_state_t *state,
-                            const fc_ref_t *ref, fc_command_t *cmd_out, float dt_s);
+void flight_controller_step(flight_controller_t *fc, const fc_state_t *state, const fc_ref_t *ref,
+                            fc_command_t *cmd_out, float dt_s);
 
 #endif /* ULYSSES_LIB_CONTROLS_FLIGHT_CONTROLLER */
