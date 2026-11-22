@@ -4,7 +4,8 @@ on:
   pull_request:
   workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
 
 # Ensure only one instance of this workflow is running on a branch
 concurrency:
@@ -114,3 +115,34 @@ jobs:
           sim STM32H743ZI run --elf build/Debug/controls_sim.elf --ascii --timeout 2 \
             --on-fault fail \
             --expect "ULYSSES-SIM: ALL PASS" --expect-absent "FAIL"
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout firmware
+        uses: actions/checkout@v7.0.1
+        with:
+          # super-linter needs the full git history to get the
+          # list of files that changed across commits
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run linter
+        uses: super-linter/super-linter/slim@2da136927bd4a73596db63044b504547c62cb854 # v9.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          VALIDATE_CLANG_FORMAT: true
+
+          # For PRs, the linter should only check the changed files. However, if it is a manual
+          # trigger against the default branch, we can assume that the intention is to target the
+          # entire codebase.
+          VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' && github.ref_name == github.event.repository.default_branch}}
+
+          # Linter and formatter configuration files are at the root of the project
+          LINTER_RULES_PATH: .
+
+          # Report configuration errors for this action
+          FAIL_ON_INVALID_GITHUB_ACTIONS_EVENT_CONFIGURATION: true
