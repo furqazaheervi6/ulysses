@@ -7,8 +7,9 @@ typedef struct fc_vehicle_properties {
     float centre_of_mass_m[3];
     float inertia_kg_m2[3][3];
 
-    float gimbal_max_x;
-    float gimbal_max_y;
+    ///< Largest gimbal angle about each axis, applied in both directions
+    float gimbal_max_x_rad;
+    float gimbal_max_y_rad;
 } fc_vehicle_properties_t;
 
 typedef struct fc_environment_properties {

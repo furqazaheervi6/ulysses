@@ -14,6 +14,8 @@ void flight_controller_init(flight_controller_t *fc, const fc_config_t *config)
     ULYSSES_ASSERT(config != NULL, "Flight controller config must be non NULL");
 
     memset(fc, 0, sizeof(*fc));
+    // TODO: validate the config (mass above zero, a symmetric positive-definite inertia, positive
+    // gimbal limits, finite gains). For now a zeroed or forgotten config is accepted silently.
     fc->config = *config;
     atomic_init(&fc->faults, 0);
 
@@ -82,7 +84,8 @@ void flight_controller_step(flight_controller_t *fc, const fc_state_t *state, co
 
     // TODO: implement the control law using dt. q_err is a world-frame rotation, and the docs do
     // not say which frame omega and the inertia are in; settle this before writing the law (see
-    // "Frames and sign conventions" in flight_controller.h).
+    // "Frames and sign conventions" in flight_controller.h). Until then the command is always zero.
+    // TODO: the controller tests only run on a host, not in CI. Run them in CI.
     (void)dt;
     memset(cmd_out, 0, sizeof(*cmd_out));
 }

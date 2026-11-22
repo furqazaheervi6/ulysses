@@ -26,17 +26,26 @@
  * q_err and tau_gyro = (MMOI * omega) x omega.
  *
  * Gimbal angles, for the desired thrust direction t_des: theta_x = -atan(t_des.y / t_des.z) and
- * theta_y = asin(t_des.x).
+ * theta_y = asin(t_des.x). In the other direction the docs give the thrust direction as
+ * t_hat = [sin(theta_y), -sin(theta_x) * cos(theta_y), cos(theta_x) * cos(theta_y)]. So a positive
+ * theta_x tilts the thrust toward -y and a positive theta_y toward +x, in the frame t_hat is
+ * expressed in. Both conversions are in gimbal.h.
  *
  * Not defined by the docs, so not assumed here:
  *  - the world frame axes (NED, ENU, ...) and the direction of gravity;
  *  - the body frame axes and handedness, and which axis is the thrust axis;
  *  - the frame of omega, the sensor readings and t_des;
  *  - units;
- *  - which way a positive theta_x or theta_y tilts the thrust;
+ *  - the physical servo direction and mounting, and which servo is X and which is Y;
  *  - where tau_gyro, phi and tau_cmd are rotated into a common frame. q_err is a world-frame
  *    rotation, while the docs do not say which frame omega and MMOI are in.
  * Settle these with the controls team before writing the control law.
+ *
+ * Known limitations, to be removed as they are fixed:
+ *  - The control law is not implemented, so flight_controller_step() always outputs a zero command.
+ *  - The config is not validated. A zeroed or forgotten fc_config_t is accepted silently, which
+ *    means zero mass and zero gains.
+ *  - The controller tests run only on a host. CI compiles this code but does not run any tests.
  */
 
 /**
@@ -64,8 +73,8 @@ typedef struct fc_ref {
 } fc_ref_t;
 
 typedef struct fc_command {
-    float theta_x_cmd;
-    float theta_y_cmd;
+    float theta_x_cmd; ///< Gimbal angle command about x, in radians, see gimbal.h
+    float theta_y_cmd; ///< Gimbal angle command about y, in radians, see gimbal.h
     float thrust_top;
     float thrust_bottom;
 } fc_command_t;
