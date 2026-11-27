@@ -13,5 +13,6 @@ target_sources(ulysses_lib
         controls/flight_controller.c
         controls/gimbal.c
         controls/pid.c
+        controls/xy_pid.c
         math/quaternion.c
 )
